@@ -42,22 +42,26 @@
 
         export HOME="''${HOME:-/home/nixuser}"
 
+        # Ensure profile directories exist in the bind-mounted home (the image
+        # layers under /home are hidden by the mount at runtime).
+        mkdir -p "$HOME/.local/state/nix/profiles"
+        mkdir -p "$HOME/.local/state/nix/gcroots"
+
         PROFILE="$HOME/.nix-profile"
         ACTIVATE="${dockerHome.activationPackage}/activate"
         HM_VARS="$PROFILE/etc/profile.d/hm-session-vars.sh"
 
         if [ ! -e "$PROFILE" ] && [ -x "$ACTIVATE" ]; then
           echo "[gshell] First run with empty home - activating home-manager profile..."
-          # Call via bash -c to give the activate script a reliable $0 and environment.
-          # This avoids readlink/dirname errors when the script is invoked as an entrypoint.
-          # Also set TMPDIR so nix-build inside activation can create its temp dirs.
-          bash -c '
-            export HOME="'"$HOME"'"
-            export USER="${USER:-nixuser}"
-            export TMPDIR=/tmp
-            export NIX_BUILD_TOP=/tmp
-            "'"$ACTIVATE"'"
-          ' || echo "[gshell] Activation finished (some steps may have warnings)"
+          # Use 'env' to set a clean environment for the activation script.
+          # This ensures USER and HOME are set correctly (avoids mangled "USER:-nixuser"
+          # in profile path logic) and gives it TMPDIR.
+          env \
+            HOME=/home/nixuser \
+            USER=nixuser \
+            TMPDIR=/tmp \
+            NIX_BUILD_TOP=/tmp \
+            "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
         # Source home-manager session variables (this sets up PATH to include
@@ -105,6 +109,8 @@
             # bind mount (e.g. -v $HOME/.local/gshell-home:/home/nixuser).
             mkdir -p etc home/nixuser/.local/{bin,state} bin
             mkdir -p home/nixuser/.config
+            mkdir -p home/nixuser/.local/state/nix/profiles
+            mkdir -p home/nixuser/.local/state/nix/gcroots
 
             # /tmp is required because home-manager activation uses nix-build
             # which creates temp dirs like /tmp/nix-build-...
@@ -125,7 +131,16 @@
             cat > etc/group <<'EOF'
             root:x:0:
             nixuser:x:1000:
+            nixbld:x:30000:
             EOF
+
+            # Minimal nix config to avoid 'nixbld' group warning and allow
+            # activation to proceed in the container without multi-user nix setup.
+            mkdir -p etc/nix
+            cat > etc/nix/nix.conf <<'NIXCONF'
+build-users-group =
+experimental-features = nix-command flakes
+NIXCONF
 
             # Stable location for the entrypoint.
             ln -sf ${gshellEntrypoint}/bin/gshell-entrypoint bin/gshell-entrypoint
