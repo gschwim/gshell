@@ -65,6 +65,19 @@ docker load < result
 
 The image will be available locally as `gshell:latest`.
 
+The container is configured to run as the unprivileged user `nixuser` (uid 1000, gid 1000).
+
+### Volume mount best practices
+
+Use a dedicated directory on the host rather than something like `/tmp`:
+
+```bash
+mkdir -p "$HOME/.local/gshell-home"
+docker run --rm -it -v "$HOME/.local/gshell-home:/home/nixuser" gshell
+```
+
+If you are root on the Docker host, files created inside the container will appear owned by uid 1000 on the host. The first run will create the usual home-manager profile layout under the bind mount.
+
 ### Building from macOS
 
 `gshell` only produces an `x86_64-linux` Docker image. On macOS:
@@ -96,7 +109,7 @@ The container expects a bind-mounted writable home directory (the "real" home on
 
 ```bash
 docker run --rm -it \
-  -v $HOME/.local/gshell-home:/home/nixuser \
+  -v "$HOME/.local/gshell-home:/home/nixuser" \
   gshell
 ```
 
