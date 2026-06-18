@@ -61,6 +61,8 @@
             USER=nixuser \
             TMPDIR=/tmp \
             NIX_BUILD_TOP=/tmp \
+            NIX_CONF_DIR=/etc/nix \
+            XDG_STATE_HOME=/home/nixuser/.local/state \
             "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
@@ -141,6 +143,13 @@
 build-users-group =
 experimental-features = nix-command flakes
 NIXCONF
+
+            # Make nix commands available in PATH (usr/local/bin is in the image PATH)
+            # so the activation script can find nix-build, nix etc.
+            mkdir -p usr/local/bin
+            ln -sf ${pkgs.nix}/bin/nix usr/local/bin/nix
+            ln -sf ${pkgs.nix}/bin/nix-build usr/local/bin/nix-build
+            ln -sf ${pkgs.nix}/bin/nix-env usr/local/bin/nix-env
 
             # Stable location for the entrypoint.
             ln -sf ${gshellEntrypoint}/bin/gshell-entrypoint bin/gshell-entrypoint
