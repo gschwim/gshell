@@ -50,9 +50,12 @@
           echo "[gshell] First run with empty home - activating home-manager profile..."
           # Call via bash -c to give the activate script a reliable $0 and environment.
           # This avoids readlink/dirname errors when the script is invoked as an entrypoint.
+          # Also set TMPDIR so nix-build inside activation can create its temp dirs.
           bash -c '
             export HOME="'"$HOME"'"
             export USER="${USER:-nixuser}"
+            export TMPDIR=/tmp
+            export NIX_BUILD_TOP=/tmp
             "'"$ACTIVATE"'"
           ' || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
@@ -102,6 +105,11 @@
             # bind mount (e.g. -v $HOME/.local/gshell-home:/home/nixuser).
             mkdir -p etc home/nixuser/.local/{bin,state} bin
             mkdir -p home/nixuser/.config
+
+            # /tmp is required because home-manager activation uses nix-build
+            # which creates temp dirs like /tmp/nix-build-...
+            mkdir -p tmp
+            chmod 1777 tmp
 
             # Create the nixuser account (uid 1000) inside the image.
             # This is required so `docker run --user nixuser` works on normal
