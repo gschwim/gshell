@@ -48,7 +48,13 @@
 
         if [ ! -e "$PROFILE" ] && [ -x "$ACTIVATE" ]; then
           echo "[gshell] First run with empty home - activating home-manager profile..."
-          "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
+          # Call via bash -c to give the activate script a reliable $0 and environment.
+          # This avoids readlink/dirname errors when the script is invoked as an entrypoint.
+          bash -c '
+            export HOME="'"$HOME"'"
+            export USER="${USER:-nixuser}"
+            "'"$ACTIVATE"'"
+          ' || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
         # Source home-manager session variables (this sets up PATH to include
@@ -74,6 +80,7 @@
           contents = [
             pkgs.bashInteractive
             pkgs.coreutils
+            pkgs.nix   # required for the home-manager activation script (it calls nix-build internally)
 
             # Provide a working sh for any scripts.
             (pkgs.runCommand "bin-sh" {} ''

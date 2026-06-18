@@ -93,7 +93,9 @@ The image creates a `nixuser` account (uid/gid 1000) inside the container (see /
 - On normal Linux: `docker run --user nixuser ...` (or `--user 1000:1000`)
 - On Windows / locked-down Docker: usually you must run as root (see Windows section below).
 
-On first start with a fresh/empty bind-mounted home, the entrypoint automatically runs the baked-in home-manager activation.
+On first start with a fresh/empty bind-mounted home, the entrypoint runs the baked-in home-manager activation.
+
+**Important**: The activation script internally uses `nix-build`, so `pkgs.nix` is included in the image. This adds a bit of size but is required for the first-run activation to complete successfully.
 
 ### Volume mount best practices
 
