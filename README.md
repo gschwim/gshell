@@ -8,7 +8,7 @@ This repo exists to:
 
 - Pin a specific version of `nix-home-manager` for the Docker image (independent release cadence).
 - Provide the canonical place for the Dockerfile, compose examples, publish workflow, and image metadata.
-- Make `nix build .#packages.x86_64-linux.gshell` (or the short form on Linux) produce the loadable `gshell` image tarball by consuming the `nix-home-cli-image` attribute from the pinned flake.
+- Own the Docker image construction (user setup for Linux + root default for locked-down Windows, entrypoint, layered image) so gshell can produce a working `gshell` image independently of the state of nix-home-manager's image attr.
 
 ## Requirements
 
@@ -67,16 +67,18 @@ The image will be available locally as `gshell:latest`.
 
 **Important when developing alongside nix-home-manager:**
 
-`gshell`'s `flake.lock` pins a specific revision of nix-home-manager. A plain `nix build` (or `make build`) or `git pull` in gshell will use that pinned version.
+gshell now defines the Docker image itself (see flake.nix). It only uses nix-home-manager for the home configuration.
 
-If you have local changes in `~/src/nix-home-manager` (e.g. fixes to the image), build with an override:
+A plain `nix build` should work once the lock is updated for the new nixpkgs input.
+
+If you have uncommitted changes in `../nix-home-manager`:
 
 ```bash
 nix build --override-input nix-home-manager path:../nix-home-manager .#packages.x86_64-linux.gshell
 docker load < result
 ```
 
-Or update the lock after committing/pushing the nix-home-manager changes:
+After changes land in nix-home-manager, update here with:
 
 ```bash
 nix flake update
