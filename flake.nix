@@ -5,6 +5,14 @@
     # Pin the nix-home-manager flake that defines the actual home config
     # and the pre-built docker image attr (nix-home-cli-image -> "gshell" image).
     # This repo "consumes the image attr" as described in nix-home-manager's README.
+    #
+    # The lock file pins a specific commit (see flake.lock) so that gshell
+    # image releases are reproducible and independent of nix-home-manager master.
+    # When preparing a new gshell release:
+    #   1. Land the desired changes in nix-home-manager (master)
+    #   2. nix flake update (in gshell)
+    #   3. nix build && docker load < result && test
+    #   4. tag/publish
     nix-home-manager.url = "github:gschwim/nix-home-manager/master";
 
     # We don't need our own nixpkgs here; we re-export from the pinned source.
