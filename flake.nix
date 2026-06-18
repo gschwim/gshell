@@ -51,11 +51,11 @@
         ACTIVATE="${dockerHome.activationPackage}/activate"
         HM_VARS="$PROFILE/etc/profile.d/hm-session-vars.sh"
 
-        if [ ! -e "$PROFILE" ] && [ -x "$ACTIVATE" ]; then
-          echo "[gshell] First run with empty home - activating home-manager profile..."
-          # Use 'env' to set a clean environment for the activation script.
-          # This ensures USER and HOME are set correctly (avoids mangled "USER:-nixuser"
-          # in profile path logic) and gives it TMPDIR.
+        # Always attempt activation on every start. It is idempotent, ensures
+        # all home files (.zshrc, starship.toml, nvim config, etc.) are deployed
+        # to $HOME from the baked config, and sets up the environment.
+        if [ -x "$ACTIVATE" ]; then
+          echo "[gshell] Activating home-manager profile..."
           env \
             HOME=/home/nixuser \
             USER=nixuser \
@@ -66,12 +66,13 @@
             "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
-        # Fallback: if activation didn't create ~/.nix-profile (due to warnings
-        # or container limitations), link directly to the activation generation.
-        # The generation contains references to all packages from your HM config,
-        # so ~/.nix-profile/bin will have nvim, tmux, starship, etc.
-        if [ ! -e "$PROFILE" ]; then
-          echo "[gshell] Activation did not create .nix-profile; linking fallback..."
+        # Always force ~/.nix-profile to point to our baked HM generation (the
+        # activationPackage). This ensures the packages from the config (nvim as vi,
+        # tmux, starship, eza, bat, etc.) are available via the generation's closure,
+        # no matter which nix per-user profile the activation script created.
+        # Safe to run every time; it makes the env match the HM config for "nixuser".
+        if [ "$(readlink -f "$PROFILE" 2>/dev/null || true)" != "${dockerHome.activationPackage}" ]; then
+          echo "[gshell] Forcing .nix-profile symlink to the HM generation..."
           ln -sfn "${dockerHome.activationPackage}" "$PROFILE" || true
         fi
 
