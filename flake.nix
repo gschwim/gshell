@@ -42,6 +42,11 @@
 
         export HOME="''${HOME:-/home/nixuser}"
 
+        # Prevent the annoying zsh-newuser-install prompt on first run when no rc files.
+        if [ ! -f "$HOME/.zshrc" ]; then
+          echo '# Managed by home-manager. Populated by activation.' > "$HOME/.zshrc"
+        fi
+
         # Ensure profile directories exist in the bind-mounted home (the image
         # layers under /home are hidden by the mount at runtime).
         mkdir -p "$HOME/.local/state/nix/profiles"
@@ -66,14 +71,35 @@
             "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
-        # Always force ~/.nix-profile to point to our baked HM generation (the
-        # activationPackage). This ensures the packages from the config (nvim as vi,
-        # tmux, starship, eza, bat, etc.) are available via the generation's closure,
-        # no matter which nix per-user profile the activation script created.
-        # Safe to run every time; it makes the env match the HM config for "nixuser".
-        if [ "$(readlink -f "$PROFILE" 2>/dev/null || true)" != "${dockerHome.activationPackage}" ]; then
-          echo "[gshell] Forcing .nix-profile symlink to the HM generation..."
-          ln -sfn "${dockerHome.activationPackage}" "$PROFILE" || true
+        # After activation, look for a proper profile created by it (XDG or per-user/nixuser).
+        # Prefer that for the full profile with packages installed (the profile has bin/ populated).
+        # If not, try to find 'home-path' inside the generation (the union of package outputs).
+        # Last resort: direct to the generation.
+        profile_candidate=""
+        for d in "$HOME/.local/state/nix/profiles" "/nix/var/nix/profiles/per-user/nixuser"; do
+          if [ -d "$d" ]; then
+            p=$(find "$d" -type l \( -name 'profile' -o -name 'profile-*' \) 2>/dev/null | sort | tail -1 || true)
+            if [ -n "$p" ]; then
+              profile_candidate="$p"
+              break
+            fi
+          fi
+        done
+
+        if [ -n "$profile_candidate" ]; then
+          if [ "$(readlink -f "$PROFILE" 2>/dev/null || true)" != "$profile_candidate" ]; then
+            ln -sfn "$profile_candidate" "$PROFILE" || true
+          fi
+        else
+          # Try home-path inside the activation generation
+          home_path=$(find "${dockerHome.activationPackage}" -name home-path -type d 2>/dev/null | head -1 || true)
+          if [ -n "$home_path" ]; then
+            if [ "$(readlink -f "$PROFILE" 2>/dev/null || true)" != "$home_path" ]; then
+              ln -sfn "$home_path" "$PROFILE" || true
+            fi
+          elif [ ! -e "$PROFILE" ]; then
+            ln -sfn "${dockerHome.activationPackage}" "$PROFILE" || true
+          fi
         fi
 
         # Source home-manager session variables (this sets up PATH to include
@@ -86,6 +112,13 @@
         ZSH_BIN="$PROFILE/bin/zsh"
         if [ ! -x "$ZSH_BIN" ]; then
           ZSH_BIN="${pkgs.zsh}/bin/zsh"
+        fi
+
+        # Ensure we have the HM-managed .zshrc for custom prompt, aliases, etc.
+        # Overwrite placeholder if we find the real one in the generation.
+        zshrc_gen=$(find "${dockerHome.activationPackage}" -name '.zshrc' -o -name 'zshrc' 2>/dev/null | head -1 || true)
+        if [ -n "$zshrc_gen" ]; then
+          ln -sfn "$zshrc_gen" "$HOME/.zshrc" || true
         fi
 
         exec "$ZSH_BIN" -i "$@"
