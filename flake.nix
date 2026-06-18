@@ -32,15 +32,38 @@
       # Small entrypoint that lazily activates the baked home-manager profile
       # the first time a container is started against a fresh bind-mounted
       # /home/nixuser. This makes `docker run` against an empty volume "just work".
+      #
+      # We source hm-session-vars.sh to ensure PATH and other session vars
+      # from the home-manager profile are active. We prefer the zsh from the
+      # activated profile so that all customizations (starship prompt, aliases,
+      # plugins, etc.) are present.
       gshellEntrypoint = pkgs.writeShellScriptBin "gshell-entrypoint" ''
         set -euo pipefail
 
-        if [ ! -e "$HOME/.nix-profile" ]; then
-          echo "[gshell] First run with empty home - activating profile..."
-          "${dockerHome.activationPackage}/activate" || true
+        export HOME="''${HOME:-/home/nixuser}"
+
+        PROFILE="$HOME/.nix-profile"
+        ACTIVATE="${dockerHome.activationPackage}/activate"
+        HM_VARS="$PROFILE/etc/profile.d/hm-session-vars.sh"
+
+        if [ ! -e "$PROFILE" ] && [ -x "$ACTIVATE" ]; then
+          echo "[gshell] First run with empty home - activating home-manager profile..."
+          "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
-        exec ${pkgs.zsh}/bin/zsh "$@"
+        # Source home-manager session variables (this sets up PATH to include
+        # the profile bins, and other env vars from your config).
+        if [ -f "$HM_VARS" ]; then
+          . "$HM_VARS"
+        fi
+
+        # Prefer the zsh from the activated profile (brings custom rc, starship init, etc.)
+        ZSH_BIN="$PROFILE/bin/zsh"
+        if [ ! -x "$ZSH_BIN" ]; then
+          ZSH_BIN="${pkgs.zsh}/bin/zsh"
+        fi
+
+        exec "$ZSH_BIN" -i "$@"
       '';
     in {
       packages.${system} = {
