@@ -19,7 +19,7 @@ help:
 	@echo "gshell Makefile targets:"
 	@echo "  make build     - nix build the linux image tarball (.#packages.x86_64-linux.gshell)"
 	@echo "  make load      - docker load < result"
-	@echo "  make run       - run interactive gshell (with host volume)"
+	@echo "  make run       - run interactive gshell (see README for --user root on Windows)"
 	@echo "  make run-tmux  - run inside tmux"
 	@echo "  make update    - nix flake update + build (bring in newer base)"
 	@echo "  make clean     - remove result symlink"
