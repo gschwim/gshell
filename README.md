@@ -148,3 +148,13 @@ Isolating the Docker packaging + pinning lets you:
 - All real configuration changes happen in `nix-home-manager`.
 - Here you only change pinning, docs, compose files, publish scripts, and the thin Dockerfile reference.
 - After changing the pin, always `nix build` + smoke-test a container run before tagging a release.
+
+## Bootstrap note (while landing the paired changes)
+
+The current `flake.lock` pins a specific recent commit of `nix-home-manager` that introduced the `nix-home-cli-image` package / gshell docker support.
+
+- Push the corresponding commit(s) on `nix-home-manager` first (so the rev becomes fetchable from GitHub).
+- Then `nix flake update` here if the archive narHash needs to be refreshed.
+- A fresh clone of gshell + `nix build` will then work anywhere with network access to GitHub.
+
+Until that push lands, evaluation works on machines that have previously evaluated the tree via a local path override.
