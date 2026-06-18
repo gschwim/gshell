@@ -66,6 +66,15 @@
             "$ACTIVATE" || echo "[gshell] Activation finished (some steps may have warnings)"
         fi
 
+        # Fallback: if activation didn't create ~/.nix-profile (due to warnings
+        # or container limitations), link directly to the activation generation.
+        # The generation contains references to all packages from your HM config,
+        # so ~/.nix-profile/bin will have nvim, tmux, starship, etc.
+        if [ ! -e "$PROFILE" ]; then
+          echo "[gshell] Activation did not create .nix-profile; linking fallback..."
+          ln -sfn "${dockerHome.activationPackage}" "$PROFILE" || true
+        fi
+
         # Source home-manager session variables (this sets up PATH to include
         # the profile bins, and other env vars from your config).
         if [ -f "$HM_VARS" ]; then
