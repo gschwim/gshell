@@ -29,6 +29,12 @@ nix build .#gshell
 nix build .#packages.x86_64-linux.gshell
 ```
 
+Or just:
+
+```bash
+make build
+```
+
 ### On macOS (or other non-Linux)
 
 You must select the Linux package explicitly:
@@ -37,10 +43,16 @@ You must select the Linux package explicitly:
 nix build .#packages.x86_64-linux.gshell
 ```
 
-Or use the `--system` flag to make the short name work:
+Or use the `--system` flag:
 
 ```bash
 nix build --system x86_64-linux .#gshell
+```
+
+Or use the Makefile (now safe from any host):
+
+```bash
+make build
 ```
 
 If you don't have a Linux builder configured, this will fail at *build* time (evaluation usually succeeds). See "Building from macOS" below.
