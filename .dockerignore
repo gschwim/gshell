@@ -1,0 +1,23 @@
+# .dockerignore
+#
+# The Dockerfile in this repo is intentionally a thin reference/extension
+# file. The real image is produced by `nix build` + `docker load`.
+#
+# Nothing from the build context is copied into the production image layers.
+# We keep the ignore list strict for hygiene in case someone points
+# a registry automated build or `docker buildx` at the directory.
+
+*
+!Dockerfile
+!README.md
+!docker-compose.yml
+
+# Even if we did COPY things in a variant stage, we would not want these:
+.git
+.gitignore
+flake.lock
+flake.nix
+Makefile
+result
+result-*
+.direnv

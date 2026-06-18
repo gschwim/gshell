@@ -1,0 +1,59 @@
+# docker-compose.yml for gshell
+#
+# This is the recommended way to run the portable shell with compose.
+# The image must first be built and loaded:
+#
+#   nix build
+#   docker load < result
+#
+# Then:
+#
+#   docker compose run --rm gshell
+#
+# You can also run specific commands:
+#
+#   docker compose run --rm gshell tmux
+#   docker compose run --rm gshell nvim somefile
+#
+# Persistent state lives in $HOME/.local/gshell-home on the host.
+# You can point it elsewhere by editing the volume or using COMPOSE_ vars.
+
+version: "3.8"
+
+services:
+  gshell:
+    # After `docker load`, the local image is just "gshell"
+    image: gshell:latest
+
+    # If you have pushed the image to a registry, use the full ref instead:
+    # image: ghcr.io/gschwim/gshell:latest
+
+    container_name: gshell
+
+    stdin_open: true
+    tty: true
+
+    # The critical bind mount.
+    # Everything under /home/nixuser in the container is your "home" for this shell.
+    # Create the directory on the host once:
+    #   mkdir -p "$HOME/.local/gshell-home"
+    volumes:
+      - ${HOME:-/root}/.local/gshell-home:/home/nixuser
+
+    # Optional: give the container access to host docker socket (if you want
+    # to run docker-in-docker from inside gshell for testing).
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock
+
+    # You can add extra capabilities or network modes as needed:
+    # network_mode: host
+    # cap_add:
+    #   - NET_ADMIN
+
+    # Example environment you might want to forward:
+    # environment:
+    #   - TERM=xterm-256color
+    #   - TZ=UTC
+
+    # Default command is zsh -i (from the image).
+    # Override per-invocation with: docker compose run --rm gshell some-command

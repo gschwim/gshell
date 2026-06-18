@@ -1,0 +1,15 @@
+# Nix build artifacts
+/result
+/result-*
+/.direnv
+
+# Editor / OS
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local testing overrides (never commit)
+/local-*
+/test-*
