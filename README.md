@@ -65,6 +65,24 @@ docker load < result
 
 The image will be available locally as `gshell:latest`.
 
+**Important when developing alongside nix-home-manager:**
+
+`gshell`'s `flake.lock` pins a specific revision of nix-home-manager. A plain `nix build` (or `make build`) or `git pull` in gshell will use that pinned version.
+
+If you have local changes in `~/src/nix-home-manager` (e.g. fixes to the image), build with an override:
+
+```bash
+nix build --override-input nix-home-manager path:../nix-home-manager .#packages.x86_64-linux.gshell
+docker load < result
+```
+
+Or update the lock after committing/pushing the nix-home-manager changes:
+
+```bash
+nix flake update
+nix build ...
+```
+
 ### Running the container (user & permissions)
 
 The image creates a `nixuser` account (uid/gid 1000) inside the container (see /etc/passwd), but **does not force it** at runtime.

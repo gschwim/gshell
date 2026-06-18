@@ -27,16 +27,22 @@ help:
 build:
 	# Always build the linux image (this repo only produces x86_64-linux docker images).
 	# Works from Linux or from macOS (if you have a linux remote builder configured).
+	#
+	# When working with local changes in ../nix-home-manager (common during development):
+	#   nix build --override-input nix-home-manager path:../nix-home-manager .#packages.x86_64-linux.gshell
 	nix build '.#packages.x86_64-linux.gshell'
 
 load: build
 	docker load < result
 
 run: load
-	# Normal Linux/macOS:
+	# Normal Linux (with dedicated user):
+	#   docker run --rm -it --user nixuser -v "$$HOME/.local/gshell-home:/home/nixuser" gshell
+	#
+	# Default (root) -- good for Windows locked-down or simple cases:
 	#   docker run --rm -it -v "$$HOME/.local/gshell-home:/home/nixuser" gshell
 	#
-	# Locked-down Windows / Docker Business (recommended):
+	# Locked-down Windows / Docker Business:
 	#   docker run --rm -it -v "C:\gshell-home:/home/nixuser" --user root gshell
 	docker run --rm -it \
 		-v "$$HOME/.local/gshell-home:/home/nixuser" \
