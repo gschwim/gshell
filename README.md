@@ -8,7 +8,7 @@ This repo exists to:
 
 - Pin a specific version of `nix-home-manager` for the Docker image (independent release cadence).
 - Provide the canonical place for the Dockerfile, compose examples, publish workflow, and image metadata.
-- Make `nix build` here produce the loadable `gshell` image tarball by consuming the `nix-home-cli-image` attribute from the pinned flake.
+- Make `nix build .#packages.x86_64-linux.gshell` (or the short form on Linux) produce the loadable `gshell` image tarball by consuming the `nix-home-cli-image` attribute from the pinned flake.
 
 ## Requirements
 
@@ -17,23 +17,66 @@ This repo exists to:
 
 ## Build the image
 
-From this directory:
+The image is **Linux-only** (`x86_64-linux`).
+
+### On a Linux machine
 
 ```bash
 nix build
-# or explicitly:
+# or
 nix build .#gshell
+# or explicitly
+nix build .#packages.x86_64-linux.gshell
 ```
 
-This produces a result that is the OCI tarball from `dockerTools.buildLayeredImage`.
+### On macOS (or other non-Linux)
 
-Load it:
+You must select the Linux package explicitly:
+
+```bash
+nix build .#packages.x86_64-linux.gshell
+```
+
+Or use the `--system` flag to make the short name work:
+
+```bash
+nix build --system x86_64-linux .#gshell
+```
+
+If you don't have a Linux builder configured, this will fail at *build* time (evaluation usually succeeds). See "Building from macOS" below.
+
+After the build succeeds you get a `result` that is the tarball:
 
 ```bash
 docker load < result
 ```
 
 The image will be available locally as `gshell:latest`.
+
+### Building from macOS
+
+`gshell` only produces an `x86_64-linux` Docker image. On macOS:
+
+- Evaluation of `.#packages.x86_64-linux.gshell` works.
+- Realizing (building) the derivation requires a Linux builder.
+
+Common options:
+
+1. **Remote Linux builder** (recommended for local dev)
+   - Run a Linux VM (Lima + NixOS, or a cheap cloud box, or a local Ubuntu box).
+   - Register it in `/etc/nix/machines` or via `nix build --builders 'ssh-ng://user@linux-builder x86_64-linux ...'`.
+   - Then the commands above will transparently build on Linux.
+
+2. **CI / one-off Linux shell**
+   - Use GitHub Actions, a temp Linux CI runner, or `nix develop` on a Linux machine.
+   - Many teams do the `nix build .#packages.x86_64-linux.gshell && docker load` step only in CI for publishing.
+
+3. **Just evaluate / inspect**
+   ```bash
+   nix eval .#packages.x86_64-linux.gshell.outPath   # shows the store path if cached
+   ```
+
+Once the tarball is produced (by whatever means), `docker load` and `docker run` work on macOS just fine — only the *build* of the image tarball itself is Linux-specific.
 
 ## Run
 
@@ -79,7 +122,7 @@ To bring in a newer `nix-home-manager` (new tools, fixes, package bumps) into th
 
 ```bash
 nix flake update
-nix build
+nix build .#packages.x86_64-linux.gshell
 docker load < result
 docker tag gshell:latest gshell:YYYYMMDD   # or your versioning scheme
 ```
@@ -147,7 +190,7 @@ Isolating the Docker packaging + pinning lets you:
 
 - All real configuration changes happen in `nix-home-manager`.
 - Here you only change pinning, docs, compose files, publish scripts, and the thin Dockerfile reference.
-- After changing the pin, always `nix build` + smoke-test a container run before tagging a release.
+- After changing the pin, always `nix build .#packages.x86_64-linux.gshell` + smoke-test a container run before tagging a release.
 
 ## Bootstrap note (while landing the paired changes)
 
@@ -155,6 +198,6 @@ The current `flake.lock` pins a specific recent commit of `nix-home-manager` tha
 
 - Push the corresponding commit(s) on `nix-home-manager` first (so the rev becomes fetchable from GitHub).
 - Then `nix flake update` here if the archive narHash needs to be refreshed.
-- A fresh clone of gshell + `nix build` will then work anywhere with network access to GitHub.
+- A fresh clone of gshell + `nix build .#packages.x86_64-linux.gshell` will then work anywhere with network access to GitHub.
 
 Until that push lands, evaluation works on machines that have previously evaluated the tree via a local path override.

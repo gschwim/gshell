@@ -17,7 +17,7 @@ SHELL := /bin/bash
 
 help:
 	@echo "gshell Makefile targets:"
-	@echo "  make build     - nix build the image tarball (result)"
+	@echo "  make build     - nix build the linux image tarball (.#packages.x86_64-linux.gshell)"
 	@echo "  make load      - docker load < result"
 	@echo "  make run       - run interactive gshell (with host volume)"
 	@echo "  make run-tmux  - run inside tmux"
@@ -25,7 +25,9 @@ help:
 	@echo "  make clean     - remove result symlink"
 
 build:
-	nix build
+	# Always build the linux image (this repo only produces x86_64-linux docker images).
+	# Works from Linux or from macOS (if you have a linux remote builder configured).
+	nix build '.#packages.x86_64-linux.gshell'
 
 load: build
 	docker load < result

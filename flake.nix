@@ -11,7 +11,7 @@
     # When preparing a new gshell release:
     #   1. Land the desired changes in nix-home-manager (master)
     #   2. nix flake update (in gshell)
-    #   3. nix build && docker load < result && test
+    #   3. nix build .#packages.x86_64-linux.gshell && docker load < result && test
     #   4. tag/publish
     nix-home-manager.url = "github:gschwim/nix-home-manager/master";
 
@@ -27,8 +27,15 @@
       # This lets you build the gshell docker tarball from *this* checkout
       # while the source of truth for the profile lives in the pinned flake.
       #
-      # Usage:
+      # On Linux:
       #   nix build .#gshell
+      #   nix build .#packages.x86_64-linux.gshell
+      #
+      # On macOS (or any non-linux host):
+      #   nix build .#packages.x86_64-linux.gshell
+      #   # or: nix build --system x86_64-linux .#gshell
+      #
+      # Then:
       #   docker load < result
       #   docker run --rm -it -v $HOME/.local/gshell-home:/home/nixuser gshell
       packages.${system} = {
