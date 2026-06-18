@@ -35,10 +35,20 @@ services:
 
     # The critical bind mount.
     # Everything under /home/nixuser in the container is your "home" for this shell.
-    # Create the directory on the host once:
-    #   mkdir -p "$HOME/.local/gshell-home"
+    #
+    # Linux / normal:
+    #   volumes:
+    #     - ${HOME:-/root}/.local/gshell-home:/home/nixuser
+    #
+    # Locked-down Windows (Docker Business):
+    #   volumes:
+    #     - C:\gshell-home:/home/nixuser
+    #   user: "root"
     volumes:
       - ${HOME:-/root}/.local/gshell-home:/home/nixuser
+
+    # On restricted Windows environments you almost always need this:
+    # user: "root"
 
     # Optional: give the container access to host docker socket (if you want
     # to run docker-in-docker from inside gshell for testing).

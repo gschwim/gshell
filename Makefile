@@ -33,6 +33,11 @@ load: build
 	docker load < result
 
 run: load
+	# Normal Linux/macOS:
+	#   docker run --rm -it -v "$$HOME/.local/gshell-home:/home/nixuser" gshell
+	#
+	# Locked-down Windows / Docker Business (recommended):
+	#   docker run --rm -it -v "C:\gshell-home:/home/nixuser" --user root gshell
 	docker run --rm -it \
 		-v "$$HOME/.local/gshell-home:/home/nixuser" \
 		gshell

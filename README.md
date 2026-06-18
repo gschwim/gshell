@@ -65,20 +65,84 @@ docker load < result
 
 The image will be available locally as `gshell:latest`.
 
-The container is configured to run as the unprivileged user `nixuser` (uid 1000, gid 1000).
+### Running the container (user & permissions)
 
-On first start with a fresh/empty bind-mounted home, the entrypoint will automatically run the baked-in home-manager activation so you get your full profile (zsh plugins, starship, neovim config, installed packages, etc.) without manual steps.
+The image creates a `nixuser` account (uid/gid 1000) inside the container (see /etc/passwd), but **does not force it** at runtime.
+
+- **Default**: runs as root. This is the most compatible setting for restricted environments.
+- On normal Linux: `docker run --user nixuser ...` (or `--user 1000:1000`)
+- On Windows / locked-down Docker: usually you must run as root (see Windows section below).
+
+On first start with a fresh/empty bind-mounted home, the entrypoint automatically runs the baked-in home-manager activation.
 
 ### Volume mount best practices
 
-Use a dedicated directory on the host rather than something like `/tmp`:
+Use a dedicated directory:
 
 ```bash
 mkdir -p "$HOME/.local/gshell-home"
 docker run --rm -it -v "$HOME/.local/gshell-home:/home/nixuser" gshell
 ```
 
-If you are root on the Docker host, files created inside the container will appear owned by uid 1000 on the host. The first run will create the usual home-manager profile layout under the bind mount.
+Bind mount ownership is host-dependent. On Linux the directory is usually owned by the user inside the container. On Windows the mount often appears owned by root (or a mapped id) from inside the container.
+
+### Locked-down Windows + Docker Business
+
+This image is intended to work in highly restricted corporate Windows environments (Docker Business / Docker Desktop with policies, limited volume paths, no host user management, etc.).
+
+**Recommended invocation on Windows:**
+
+```powershell
+# Example paths (adjust to what your environment allows)
+mkdir -p C:\gshell-home   # or a path you are permitted to use
+
+docker run --rm -it `
+  -v "C:\gshell-home:/home/nixuser" `
+  --user root `
+  gshell
+```
+
+Key points for locked-down Windows:
+
+- Run with `--user root` (or omit it — root is now the default).
+- You generally **cannot** rely on `--user nixuser` or uid 1000 because:
+  - You have no access to create a matching user on the Windows host.
+  - Bind mounts from Windows to the Linux container VM have very limited uid/gid semantics.
+- The bind mount target inside the container is always `/home/nixuser` (this is by design for the home-manager profile).
+- Choose a volume source path that your organization's Docker policy allows. Many locked-down setups only permit specific directories or drives.
+- The automatic activation on first run still works when running as root.
+- If you only have PowerShell, use the backtick+newline style or put the command in a small .bat / .ps1 wrapper.
+
+**docker-compose on Windows (example):**
+
+```yaml
+services:
+  gshell:
+    image: gshell:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - C:\gshell-home:/home/nixuser
+    user: "root"          # important on restricted Windows
+```
+
+You can also pass `user: root` via command line:
+
+```bash
+docker compose run --user root --rm gshell
+```
+
+If even root is problematic in your environment, the container is still usable; the profile tools live in the nix store regardless of the runtime user.
+
+## Run
+
+The container expects a bind-mounted writable home directory (the "real" home on the host provides your persistent files, history, keys, etc.).
+
+```bash
+docker run --rm -it \
+  -v "$HOME/.local/gshell-home:/home/nixuser" \
+  gshell
+```
 
 ### Building from macOS
 
@@ -107,7 +171,9 @@ Once the tarball is produced (by whatever means), `docker load` and `docker run`
 
 ## Run
 
-The container expects a bind-mounted writable home directory (the "real" home on the host provides your persistent files, history, keys, etc.).
+See the "Running the container (user & permissions)" and the platform-specific sections above (especially **Locked-down Windows + Docker Business**).
+
+Basic pattern (Linux/macOS normal case):
 
 ```bash
 docker run --rm -it \
@@ -115,9 +181,9 @@ docker run --rm -it \
   gshell
 ```
 
-Inside you get the full zsh + starship + tmux + neovim + python/poetry + networking tools + homectl etc. that the CLI profile provides.
+Inside you get the full zsh + starship + tmux + neovim + python/poetry + networking tools + homectl etc.
 
-First run will populate `~/.nix-profile` inside the mounted directory (the activation closure is already present in the image layers).
+The first run against a fresh volume will run the activation entrypoint automatically.
 
 ## Recommended host directory
 
