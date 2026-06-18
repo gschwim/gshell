@@ -67,6 +67,8 @@ The image will be available locally as `gshell:latest`.
 
 The container is configured to run as the unprivileged user `nixuser` (uid 1000, gid 1000).
 
+On first start with a fresh/empty bind-mounted home, the entrypoint will automatically run the baked-in home-manager activation so you get your full profile (zsh plugins, starship, neovim config, installed packages, etc.) without manual steps.
+
 ### Volume mount best practices
 
 Use a dedicated directory on the host rather than something like `/tmp`:
